@@ -1,124 +1,82 @@
-package com.example.fiery.controller;
+package com.example.iProduct.controller;
 
-import com.example.fiery.domain.Category;
-import com.example.fiery.domain.Course;
-import com.example.fiery.domain.User;
-import com.example.fiery.service.CategoryService;
-import com.example.fiery.service.CourseService;
+import com.example.iProduct.domain.City;
+import com.example.iProduct.domain.Product;
+import com.example.iProduct.service.CityService;
+import com.example.iProduct.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 
-@Controller
+@RestController
 public class MainController {
     @Autowired
-    CourseService courseService;
+    CityService cityService;
 
     @Autowired
-    CategoryService categoryService;
+    ProductService productService;
 
-    @Value("${upload.path}")
-    private String uploadPath;
-
-    @GetMapping("/")
-    public String greeting(@AuthenticationPrincipal User user, Model model) {
-
-//        if (user != null && user.isAdmin())
-//            return "redirect:/admin";
-//        else if (user != null && user.isTeacher())
-//            return "redirect:/teacher";
-//        else if (user != null && user.isStudent())
-//            return "redirect:/student";
-//        else
-//        if (user != null && user.isTeacher()){
-            model.addAttribute("listCourses", courseService.getListAllActiveCourses(null, null));
-            return "greeting";
-//        }
-//        return "redirect:/course";
+    @RequestMapping(method = RequestMethod.GET, path = "/")
+    public String greeting() {
+        return "Hello world";
     }
 
-    @GetMapping("/contacts")
-    public String getContactsPage() {
-            return "contacts";
+    @RequestMapping(method = RequestMethod.GET, path = "/products")
+    public List<Product> getProducts() {
+        return productService.getProducts();
     }
 
-    @GetMapping("/about")
-    public String getAboutPage() {
-            return "about";
-    }
-
-    @GetMapping("/course")
-    public String getCourse(
-            @AuthenticationPrincipal User user,
-            @RequestParam(required = false) String filter,
-            @RequestParam(required = false) Category selectedCategory,
-            @PageableDefault(sort = {"id"}, direction = Sort.Direction.DESC) Pageable pageable,
-            Model model
-    ) {
-
-        if(selectedCategory != null)
-            model.addAttribute("selectedCategory", selectedCategory);
-        model.addAttribute("url", "/course");
-        model.addAttribute("filter", filter);
-        model.addAttribute("courses", courseService.getAllActiveCourses(filter, selectedCategory, pageable));
-        model.addAttribute("listCourses", courseService.getListAllActiveCourses(filter, selectedCategory));
-        model.addAttribute("categories", categoryService.getAllCategories());
-        return "mainCourses";
-    }
-
-    @GetMapping("/course/{course}")
-    public String getCourseDetail(
-            @AuthenticationPrincipal User user,
-            @PathVariable Course course,
-            Model model
-    ) {
-
-        model.addAttribute("url", "/course/" + course.getId());
-        return "mainCourses";
-    }
-
-    @GetMapping("/course/{course}/sub")
-    public String subscribeToCourse(
-            @AuthenticationPrincipal User user,
-            @PathVariable Course course,
-            Model model
-    ) {
-        if (user == null)
-            return "redirect:/";
-
-        model.addAttribute("url", "/course/" + course.getId() + "/sub");
-
-        Map<String, String> serviceResult = courseService.subscribeStudent(course, user);
-
-        if (!serviceResult.isEmpty()) {
-            model.mergeAttributes(serviceResult);
-            return "mainCourses";
+    @RequestMapping(method = RequestMethod.GET, path = "/product/{productId}")
+    public Product getProduct(@PathVariable String productId) {
+        for (Product product : productService.getProducts()) {
+            if (product.getId() == Integer.parseInt(productId))
+                return product;
         }
-
-        return "redirect:/student/my-courses";
+        return null;
     }
 
+    @RequestMapping(method = RequestMethod.POST, path = "/products/add", consumes = {"multipart/form-data"})
+    public List<Product> addProducts(@RequestParam Map<String, Object> body) {
+        productService.addProduct(body);
+        return productService.getProducts();
+    }
+
+    @RequestMapping(method = RequestMethod.POST, path = "/products/edit", consumes = {"multipart/form-data"})
+    public List<Product> editProducts(@RequestParam Map<String, Object> body) {
+        productService.editProduct(body);
+        return productService.getProducts();
+    }
+
+    @RequestMapping(method = RequestMethod.POST, path = "/products/del")
+    public List<Product> deleteProducts(@RequestBody Map<String, String> body) {
+        for (Map.Entry<String, String> entry : body.entrySet()) {
+            if (entry.getKey().equals("id"))
+                return productService.deleteProduct(Long.parseLong(entry.getValue()));
+        }
+        return productService.getProducts();
+    }
+
+    @RequestMapping(method = RequestMethod.GET, path = "/cities")
+    public List<City> getCities() {
+        return cityService.getCities();
+    }
+
+//    @GetMapping("/contacts")
+//    public String getContactsPage() {
+//            return "contacts";
+//    }
+//
 //    Get images
-    @GetMapping(value = "/img/{name}", produces = MediaType.IMAGE_JPEG_VALUE)
-    public @ResponseBody
-    byte[] getImage(@PathVariable String name) {
-        File serverFile = new File(uploadPath + "/" + name);
-        try {
-            return Files.readAllBytes(serverFile.toPath());
-        } catch (IOException e) {
-            return null;
-        }
-    }
+//    @GetMapping(value = "/img/{name}", produces = MediaType.IMAGE_JPEG_VALUE)
+//    public @ResponseBody
+//    byte[] getImage(@PathVariable String name) {
+//        File serverFile = new File(uploadPath + "/" + name);
+//        try {
+//            return Files.readAllBytes(serverFile.toPath());
+//        } catch (IOException e) {
+//            return null;
+//        }
+//    }
 }
